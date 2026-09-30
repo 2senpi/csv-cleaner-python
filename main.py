@@ -45,13 +45,13 @@ def handle_missing_values(
     })
 
 
-def clean_data(data: pd.DataFrame, missing_strategy: str) -> pd.DataFrame:
+def clean_data(data: pd.DataFrame, missing_strategy: str, column: str) -> pd.DataFrame:
     cleaned_data = data.drop_duplicates().copy()
     cleaned_data = trim_whitespace(cleaned_data)
     cleaned_data = normalize_column_names(cleaned_data)
     cleaned_data = handle_missing_values(cleaned_data, missing_strategy)
     cleaned_data = cleaned_data.sort_values(
-        by="season_points",
+        by=column,
         ascending=False,
     )
     return cleaned_data.reset_index(drop=True)
@@ -70,7 +70,21 @@ def print_summary(
 
 
 def main() -> None:
-    data = load_csv(INPUT_FILE)
+    try:
+        data = load_csv(INPUT_FILE)
+    except FileNotFoundError:
+        print('File isnt uploaded')
+        return
+    except pd.errors.EmptyDataError:
+        print('The file is empty')
+        return
+    except pd.errors.ParserError:
+        print("Structure is invalid")
+        return
+    except UnicodeDecodeError:
+        print('Text encoding cannot be read')
+        return
+
     missing_strategy = input(
         'Do you want to "drop" or "fill" missing values? '
     ).strip().lower()
@@ -79,7 +93,24 @@ def main() -> None:
         print('Error: please enter either "drop" or "fill".')
         return
 
-    cleaned_data = clean_data(data, missing_strategy)
+    while True:
+        sort_column = input(
+            "Which column would you like to sort by? "
+        ).strip().lower()
+
+        try:
+            cleaned_data = clean_data(
+                data,
+                missing_strategy,
+                sort_column,
+            )
+            break
+        except KeyError:
+            print(
+                f'Error: column "{sort_column}" was not found. '
+                "Try again."
+            )
+
     cleaned_data.to_csv(OUTPUT_FILE, index=False)
 
     print_summary(data, cleaned_data)
